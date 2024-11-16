@@ -38,6 +38,7 @@ export default function ChatMessages({
 }) {
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [selectedLanguage, setSelectedLanguage] = useState("es");
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
 
   const translateMessage = async (messageId, text) => {
     try {
@@ -73,6 +74,8 @@ export default function ChatMessages({
     <>
       {messages.map((message) => {
         const isSender = message.uid === user.uid;
+        const isHovered = hoveredMessageId === message.id;
+        const hasTranslation = translatedMessages[message.id];
 
         return (
           <div
@@ -80,6 +83,8 @@ export default function ChatMessages({
             className={`chat__message ${
               isSender ? "chat__message--sender" : ""
             }`}
+            onMouseEnter={() => setHoveredMessageId(message.id)}
+            onMouseLeave={() => setHoveredMessageId(null)}
           >
             <CloseRounded
               style={{
@@ -126,31 +131,48 @@ export default function ChatMessages({
                   {message.message}
                 </span>
                 <br />
-                {translatedMessages[message.id] && (
+                {hasTranslation && (
                   <span className="chat__message--translation">
                     {translatedMessages[message.id]}
+                    <CloseRounded
+                      style={{
+                        cursor: "pointer",
+                        width: 10,
+                        height: 14,
+                        left: 2,
+                        position: "relative",
+                        top: 2,
+                      }}
+                      onClick={() =>
+                        setTranslatedMessages((prev) => ({
+                          ...prev,
+                          [message.id]: null,
+                        }))
+                      }
+                    />
+                    <br />
                   </span>
                 )}
-                <div>
-                  <select
-                    value={selectedLanguage}
-                    style={{ width: 35, height: 20 }}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                  >
-                    <option value="es">🇪🇸</option>
-                    <option value="fr">🇫🇷</option>
-                    <option value="de">🇩🇪</option>
-                    <option value="zh">🇨🇳</option>
-                    <option value="en">🇬🇧</option>
-                  </select>
-                  <button
-                    onClick={() =>
-                      translateMessage(message.id, message.message)
-                    }
-                  >
-                    <Translate style={{ width: 20, height: 10 }} />
-                  </button>
-                </div>
+
+                {isHovered && !hasTranslation && (
+                  <div>
+                    <select
+                      value={selectedLanguage}
+                      style={{ width: 35, height: 20 }}
+                      onChange={(e) => setSelectedLanguage(e.target.value)}
+                    >
+                      <option value="es">🇪🇸</option>
+                      <option value="en">🇬🇧</option>
+                    </select>
+                    <button
+                      onClick={() =>
+                        translateMessage(message.id, message.message)
+                      }
+                    >
+                      <Translate style={{ width: 20, height: 10 }} />
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
