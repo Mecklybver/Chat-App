@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CircularProgress } from "@mui/material";
-import { CloseRounded } from "@mui/icons-material";
+import { CircularProgress, IconButton, TextField, Button } from "@mui/material";
+import { CloseRounded, CheckCircle, Cancel } from "@mui/icons-material";
+import EditIcon from "@mui/icons-material/Edit";
 import AudioPlayer from "src/components/AudioPlayer";
-import { deleteDoc, doc, getDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, storage } from "src/utils/firebase";
 import { deleteObject, ref } from "firebase/storage";
 import { Translate } from "@mui/icons-material";
@@ -28,6 +29,36 @@ function deleteMessage(id, roomId) {
   };
 }
 
+async function editMessage(id, roomId, newMessage, oldMessage) {
+  const messageRef = doc(db, "rooms", roomId, "messages", id);
+
+  // Add the corrected message while keeping the original message
+  await updateDoc(messageRef, {
+    correctedMessage: newMessage,
+    originalMessage: oldMessage,
+    edited: true,
+  });
+}
+
+const getDiffText = (original, edited) => {
+  const originalWords = original.split(" ");
+  const editedWords = edited.split(" ");
+
+  return originalWords.map((word, idx) =>
+    word !== editedWords[idx] ? (
+      <span
+        key={idx}
+        style={{ textDecoration: "line-through", color: "red" }}
+      >
+        {word + " "}
+      </span>
+    ) : (
+      word + " "
+    )
+  );
+};
+
+
 export default function ChatMessages({
   messages,
   user,
@@ -39,6 +70,8 @@ export default function ChatMessages({
   const [translatedMessages, setTranslatedMessages] = useState({});
   const [selectedLanguage, setSelectedLanguage] = useState("es");
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
+  const [isEditing, setIsEditing] = useState(null);
+  const [editedMessage, setEditedMessage] = useState("");
 
   const translateMessage = async (messageId, text) => {
     try {
@@ -68,6 +101,34 @@ export default function ChatMessages({
     }
   };
 
+  const handleAcceptEdit = async (messageId, roomId, oldMessage) => {
+    await editMessage(messageId, roomId, editedMessage, oldMessage);
+    setIsEditing(null); // End editing
+  };
+
+  const handleRejectEdit = () => {
+    setIsEditing(null); // Cancel editing
+    setEditedMessage(""); // Clear the edit field
+  };
+
+  const getDiffText = (original, edited) => {
+    const originalWords = original.split(" ");
+    const editedWords = edited.split(" ");
+
+    return originalWords.map((word, idx) =>
+      word !== editedWords[idx] ? (
+        <span
+          key={idx}
+          style={{ textDecoration: "line-through", color: "red" }}
+        >
+          {word + " "}
+        </span>
+      ) : (
+        word + " "
+      )
+    );
+  };
+
   if (!messages) return null;
 
   return (
@@ -76,6 +137,11 @@ export default function ChatMessages({
         const isSender = message.uid === user.uid;
         const isHovered = hoveredMessageId === message.id;
         const hasTranslation = translatedMessages[message.id];
+
+        const handleEditButtonClick = (message) => {
+          setIsEditing(message.id);
+          setEditedMessage(message.message); // Save the current message to edit
+        };
 
         return (
           <div
@@ -128,8 +194,63 @@ export default function ChatMessages({
             ) : (
               <>
                 <span className="chat__message--message">
-                  {message.message}
+                  {message.edited
+                    ? getDiffText(
+                        message.originalMessage,
+                        message.correctedMessage
+                      )
+                    : message.originalMessage || message.message}
                 </span>
+                {message.edited && (
+                  <div className="chat__message--correction">
+                    {message.correctedMessage}
+                  </div>
+                )}
+
+                {isHovered && !isEditing && !message.edited && (
+                  <IconButton onClick={() => handleEditButtonClick(message)}>
+                    <EditIcon style={{ width: 15, height: 15 }} />
+                  </IconButton>
+                )}
+
+                {isEditing === message.id && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "flex-start" }}>
+                      <TextField
+                        style={{ width: "80%", height: "20%" }}
+                        value={editedMessage}
+                        onChange={(e) => setEditedMessage(e.target.value)}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          marginLeft: "10px",
+                        }}
+                      >
+                        <IconButton
+                          onClick={() =>
+                            handleAcceptEdit(
+                              message.id,
+                              roomId,
+                              message.message
+                            )
+                          }
+                          style={{ width: 20, height: 20 }}
+                        >
+                          <CheckCircle style={{ fontSize: 20 }} />
+                        </IconButton>
+                        <IconButton
+                          onClick={handleRejectEdit}
+                          style={{ width: 20, height: 20 }}
+                        >
+                          <Cancel style={{ fontSize: 20 }} />
+                        </IconButton>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <br />
                 {hasTranslation && (
                   <span className="chat__message--translation">
@@ -175,7 +296,6 @@ export default function ChatMessages({
                 )}
               </>
             )}
-
             <span className="chat__timestamp">{message.time}</span>
           </div>
         );
