@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CircularProgress, IconButton, TextField, Button } from "@mui/material";
-import { CloseRounded, CheckCircle, Cancel } from "@mui/icons-material";
+import { CloseRounded, CheckCircle, Cancel, Speaker } from "@mui/icons-material";
 import EditIcon from "@mui/icons-material/Edit";
 import AudioPlayer from "src/components/AudioPlayer";
 import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
@@ -8,6 +8,7 @@ import { db, storage } from "src/utils/firebase";
 import { deleteObject, ref } from "firebase/storage";
 import { Translate } from "@mui/icons-material";
 import { GOOGLE_API_KEY } from "../../google";
+
 
 function deleteMessage(id, roomId) {
   return async () => {
@@ -39,25 +40,6 @@ async function editMessage(id, roomId, newMessage, oldMessage) {
     edited: true,
   });
 }
-
-const getDiffText = (original, edited) => {
-  const originalWords = original.split(" ");
-  const editedWords = edited.split(" ");
-
-  return originalWords.map((word, idx) =>
-    word !== editedWords[idx] ? (
-      <span
-        key={idx}
-        style={{ textDecoration: "line-through", color: "red" }}
-      >
-        {word + " "}
-      </span>
-    ) : (
-      word + " "
-    )
-  );
-};
-
 
 export default function ChatMessages({
   messages,
@@ -183,14 +165,19 @@ export default function ChatMessages({
             ) : null}
 
             {message.audioName ? (
-              <AudioPlayer
-                sender={isSender}
-                roomId={roomId}
-                id={message.id}
-                audioUrl={message.audioUrl}
-                audioId={audioId}
-                setAudioId={setAudioId}
-              />
+              <>
+                <AudioPlayer
+                  sender={isSender}
+                  roomId={roomId}
+                  id={message.id}
+                  audioUrl={message.audioUrl}
+                  audioId={audioId}
+                  setAudioId={setAudioId}
+                />
+                <IconButton>
+                  <Speaker style={{ width: 15, height: 15 }}/>
+                </IconButton>
+              </>
             ) : (
               <>
                 <span className="chat__message--message">

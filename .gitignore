@@ -7,8 +7,7 @@
 /complete-project
 /.next
 google.js
-/src/utils/firebase.js
-
+src/utils/firebase.js
 # testing
 /coverage
 

@@ -7,11 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build && next export"
+    "export": "next build"
   },
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
+    "@google-cloud/speech": "^6.7.0",
     "@mui/icons-material": "^5.11.16",
     "@mui/material": "^5.12.1",
     "compressorjs": "^1.2.1",
