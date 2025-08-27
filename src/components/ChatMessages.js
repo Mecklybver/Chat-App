@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CircularProgress, IconButton, TextField, Button } from "@mui/material";
+import { CircularProgress, IconButton, TextField } from "@mui/material";
 import { CloseRounded, CheckCircle, Cancel, Speaker } from "@mui/icons-material";
 import EditIcon from "@mui/icons-material/Edit";
 import AudioPlayer from "src/components/AudioPlayer";
@@ -41,6 +41,57 @@ async function editMessage(id, roomId, newMessage, oldMessage) {
   });
 }
 
+async function transcribeAudio(audioUrl) {
+  try {
+    const audioResponse = await fetch(audioUrl);
+    const audioBlob = await audioResponse.blob();
+
+    // Convert audioBlob to base64 or send directly to Google Speech-to-Text API
+    const base64Audio = await blobToBase64(audioBlob);
+
+    const response = await fetch(
+      `https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          config: {
+            encoding: "LINEAR16", // Update this according to your audio format
+            sampleRateHertz: 16000, // Update sample rate based on your audio file
+            languageCode: "en-GB",
+          },
+          audio: {
+            content: base64Audio, // The audio content encoded in base64
+          },
+        }),
+      }
+    );
+
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      return data.results[0].alternatives[0].transcript; // Extract the transcribed text
+    } else {
+      console.error("Speech-to-Text transcription failed.");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error transcribing audio:", error);
+    return null;
+  }
+}
+
+// Utility function to convert blob to base64
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function ChatMessages({
   messages,
   user,
@@ -54,6 +105,8 @@ export default function ChatMessages({
   const [hoveredMessageId, setHoveredMessageId] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
   const [editedMessage, setEditedMessage] = useState("");
+    const [transcribedMessages, setTranscribedMessages] = useState({});
+
 
   const translateMessage = async (messageId, text) => {
     try {
@@ -85,12 +138,12 @@ export default function ChatMessages({
 
   const handleAcceptEdit = async (messageId, roomId, oldMessage) => {
     await editMessage(messageId, roomId, editedMessage, oldMessage);
-    setIsEditing(null); // End editing
+    setIsEditing(null); 
   };
 
   const handleRejectEdit = () => {
-    setIsEditing(null); // Cancel editing
-    setEditedMessage(""); // Clear the edit field
+    setIsEditing(null); 
+    setEditedMessage(""); 
   };
 
   const getDiffText = (original, edited) => {
@@ -122,7 +175,21 @@ export default function ChatMessages({
 
         const handleEditButtonClick = (message) => {
           setIsEditing(message.id);
-          setEditedMessage(message.message); // Save the current message to edit
+          setEditedMessage(message.message);
+        };
+
+        const handleAudioTranscription = async (audioUrl, messageId) => {
+          try {
+            const transcription = await transcribeAudio(audioUrl);
+            if (transcription) {
+              setTranscribedMessages((prev) => ({
+                ...prev,
+                [messageId]: transcription,
+              }));
+            }
+          } catch (error) {
+            console.error("Error transcribing audio:", error);
+          }
         };
 
         return (
@@ -174,9 +241,19 @@ export default function ChatMessages({
                   audioId={audioId}
                   setAudioId={setAudioId}
                 />
-                <IconButton>
-                  <Speaker style={{ width: 15, height: 15 }}/>
+                <IconButton
+                  onClick={() =>
+                    handleAudioTranscription(message.audioUrl, message.id)
+                  }
+                >
+                  <Speaker style={{ width: 15, height: 15 }} />
                 </IconButton>
+                {transcribedMessages[message.id] && (
+                  <div>
+                    <strong>Transcription:</strong>
+                    <p>{transcribedMessages[message.id]}</p>
+                  </div>
+                )}
               </>
             ) : (
               <>
